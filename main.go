@@ -12,6 +12,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -20,6 +23,36 @@ var (
 	Version   = "dev"
 	BuildTime = "unknown"
 )
+
+func semverGreater(a, b string) bool {
+	re := regexp.MustCompile(`v?(\d+(?:\.\d+)*)`)
+	ma := re.FindStringSubmatch(a)
+	mb := re.FindStringSubmatch(b)
+	if len(ma) < 2 || len(mb) < 2 {
+		return a > b // fallback: 字符串比较
+	}
+	sa := strings.Split(ma[1], ".")
+	sb := strings.Split(mb[1], ".")
+	maxLen := len(sa)
+	if len(sb) > maxLen {
+		maxLen = len(sb)
+	}
+	for i := 0; i < maxLen; i++ {
+		var n1, n2 int
+		if i < len(sa) {
+			n1, _ = strconv.Atoi(sa[i])
+		}
+		if i < len(sb) {
+			n2, _ = strconv.Atoi(sb[i])
+		}
+		if n1 > n2 {
+			return true
+		} else if n1 < n2 {
+			return false
+		}
+	}
+	return false // 完全相等
+}
 
 func checkUpdate(currentVersion string) {
 	const repoAPI = "https://api.github.com/repos/GloryRedstoneUnion/OpenDDNS/releases/latest"
@@ -38,7 +71,7 @@ func checkUpdate(currentVersion string) {
 		fmt.Println("[WARN] Failed to parse update info:", err)
 		return
 	}
-	if data.TagName != "" && data.TagName != currentVersion {
+	if data.TagName != "" && semverGreater(data.TagName, currentVersion) {
 		fmt.Printf("\033[33m[UPDATE] New version available: %s → %s\nDownload: %s\033[0m\n", currentVersion, data.TagName, data.HTMLURL)
 	} else {
 		fmt.Println("[INFO] You are using the latest version.")
