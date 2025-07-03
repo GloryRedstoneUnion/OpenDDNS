@@ -37,6 +37,8 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 'stable'
+      - name: Download Go modules
+        run: go mod download
       - name: Set version vars
         id: vars
         run: |
