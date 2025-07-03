@@ -11,6 +11,42 @@
 
 ---
 
+## 快速开始
+
+1. **下载**
+   - 前往 [Releases](https://github.com/GloryRedstoneUnion/OpenDDNS/releases) 下载对应平台的二进制文件。
+   - 或自行编译：
+     ```sh
+     git clone https://github.com/GloryRedstoneUnion/OpenDDNS.git
+     cd OpenDDNS
+     go build -o ddns.exe
+     ```
+   
+2. **配置**
+   - 首次运行会自动生成 `config.yml`并自动退出，请手动编辑配置文件（见下方配置示例）。
+   
+3. **运行**
+   - Windows:
+     ```sh
+     openddns-xxx-xxx.exe
+     ```
+     
+   - Linux/macOS:
+     ```sh
+     ./openddns-xxx-xxx
+     ```
+     
+   - 可选参数：
+     - `-c`/`--config` 指定配置文件
+     
+       ```
+       ./openddns-xxx-xxx -c myconfig.yml
+       ```
+     
+     - `--no-check-update` 跳过启动时版本检查
+
+---
+
 ## 配置示例
 
 ```yaml
