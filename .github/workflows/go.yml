@@ -6,8 +6,8 @@ name: Go CI & Release
 on:
   push:
     tags: [ 'v*' ]
-  pull_request:
-    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
 
 jobs:
   build:
@@ -40,23 +40,37 @@ jobs:
         run: |
           echo "::set-output name=VERSION::${GITHUB_REF#refs/tags/}"
           echo "::set-output name=BUILDTIME::$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      - name: Build binaries
+      - name: Build Windows amd64
         run: |
-          mkdir dist
-          VERSION=${{ steps.vars.outputs.VERSION }}
-          platforms=(
-            'windows amd64' 'windows arm64'
-            'linux amd64' 'linux arm64' 'linux 386' 'linux arm'
-            'darwin amd64' 'darwin arm64'
-            'freebsd amd64' 'freebsd arm64'
-          )
-          for plat in "${platforms[@]}"; do
-            os=${plat%% *}
-            arch=${plat##* }
-            out="dist/OpenDDNS-${VERSION}-${os}-${arch}"
-            [ "$os" = "windows" ] && out+='.exe'
-            GOOS=$os GOARCH=$arch go build -ldflags "-X main.Version=${VERSION} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o "$out" .
-          done
+          mkdir -p dist
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-windows-amd64.exe .
+      - name: Build Windows arm64
+        run: |
+          GOOS=windows GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-windows-arm64.exe .
+      - name: Build Linux amd64
+        run: |
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-linux-amd64 .
+      - name: Build Linux arm64
+        run: |
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-linux-arm64 .
+      - name: Build Linux 386
+        run: |
+          GOOS=linux GOARCH=386 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-linux-386 .
+      - name: Build Linux arm
+        run: |
+          GOOS=linux GOARCH=arm go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-linux-arm .
+      - name: Build Darwin amd64
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-darwin-amd64 .
+      - name: Build Darwin arm64
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-darwin-arm64 .
+      - name: Build FreeBSD amd64
+        run: |
+          GOOS=freebsd GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-freebsd-amd64 .
+      - name: Build FreeBSD arm64
+        run: |
+          GOOS=freebsd GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.vars.outputs.VERSION }} -X main.BuildTime=${{ steps.vars.outputs.BUILDTIME }}" -o dist/OpenDDNS-${{ steps.vars.outputs.VERSION }}-freebsd-arm64 .
       - name: Get release notes
         id: notes
         run: |
