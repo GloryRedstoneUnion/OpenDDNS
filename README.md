@@ -1,10 +1,10 @@
 # OpenDDNS
 
-现代化多云 DDNS 动态域名解析工具，支持 Cloudflare、阿里云，多 IP 提供源，日志等级与文件输出，自动检查更新。
+现代化多提供商 DDNS 动态域名解析工具，支持 Cloudflare、阿里云，多 IP 提供源，日志等级与文件输出，自动检查更新。
 
 ## 特性
 - 目前支持 Cloudflare、阿里云（Aliyun），全部采用官方 SDK
-- 多 IP 源自动判定，支持 JSON、trace 等格式
+- 支持多个IP回显源，自动投票决定
 - 日志等级支持 debug/info/warn/error
 - 启动参数支持 `-c/--config` 指定配置文件，`--no-check-update` 跳过更新检查
 - 首次启动自动生成默认 `config.yml`
@@ -53,6 +53,7 @@
 provider: "cloudflare"
 domain: "example.com"
 subdomain: "www"
+update_interval_minutes: 5
 log_level: "info"
 log_file: ""
 ip_sources:
@@ -60,10 +61,9 @@ ip_sources:
     url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getIpInfo"
     type: "json"
     json_path: "data.addr"
-  - name: "cloudflare"
+  - name: "cf-cdn-tace"
     url: "https://www.cloudflare-cn.com/cdn-cgi/trace"
     type: "trace"
-update_interval_minutes: 5
 cloudflare:
   api_token: "YOUR_CLOUDFLARE_API_TOKEN"
   zone_id: ""
@@ -122,19 +122,17 @@ aliyun:
 ### <a id="ip_sources"></a>ip_sources
 - **类型**：数组
 
-- **说明**：公网 IP 获取源列表，可填多个，建议数量为奇数。当有多个IP源存在时，将启用投票机制，多数者胜。
-	
+- **说明**：公网 IP 获取源列表，可填多个。当有多个IP源存在时，将启用投票机制，多数者胜。如果没有“多数”，则按配置顺序优先取第一个可用的 IP。
 > [!NOTE]
 > OpenDDNS目前仅会向设定的URL发送GET请求以获取响应，更多配置项将在后续版本添加。
 
 
 - **结构**：
-
-  - `name`：源名称
-
-  - `url`：请求地址
-
-  - `type`：`json` 或 `trace`
+- `name`：源名称，可自定义，会在日志中体现
+  
+- `url`：GET请求地址
+  
+- `type`：`json` 或 `trace`
 
 > [!NOTE]  
 > 目前对trace的兼容性较差，建议使用提供json响应的API，对于trace的兼容性配置将在后续版本更新。
