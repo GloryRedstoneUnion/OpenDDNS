@@ -76,14 +76,19 @@ jobs:
       - name: Get release notes
         id: notes
         run: |
-          # 优先用 tag message，否则自动生成
-          NOTES=$(git tag -l --format='%(contents)' ${{ steps.vars.outputs.VERSION }} | tail -n +2)
-          if [ -z "$NOTES" ]; then
-            NOTES="Auto release for ${{ steps.vars.outputs.VERSION }}"
+          if [ -f .github/release/releasenote.md ]; then
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            cat .github/release/releasenote.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            NOTES=$(git tag -l --format='%(contents)' ${{ steps.vars.outputs.VERSION }} | tail -n +2)
+            if [ -z "$NOTES" ]; then
+              NOTES="Auto release for ${{ steps.vars.outputs.VERSION }}"
+            fi
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            echo "$NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           fi
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
