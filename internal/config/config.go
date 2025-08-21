@@ -33,6 +33,7 @@ type Config struct {
 	Provider              string             `yaml:"provider"`
 	Domain                string             `yaml:"domain"`
 	Subdomain             string             `yaml:"subdomain"`
+	RecordType            string             `yaml:"record_type"` // A, AAAA, auto
 	IPSources             []IPSrc            `yaml:"ip_sources"`
 	UpdateIntervalMinutes int                `yaml:"update_interval_minutes"`
 	Cloudflare            CloudflareConfig   `yaml:"cloudflare"`

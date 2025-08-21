@@ -2,5 +2,5 @@ package provider
 
 // DNSProvider 统一接口
 type DNSProvider interface {
-	UpdateRecord(ip string) error
+	UpdateRecord(ip string, recordType string) error
 }

@@ -66,7 +66,7 @@ func (c *Cloudflare) getZoneID(api *cloudflare.API) (string, error) {
 	return "", fmt.Errorf("zone not found for domain: %s", c.Domain)
 }
 
-func (c *Cloudflare) UpdateRecord(ip string) error {
+func (c *Cloudflare) UpdateRecord(ip string, recordType string) error {
 	api, err := cloudflare.NewWithAPIToken(c.APIToken)
 	if err != nil {
 		logError("Cloudflare API token error: %v", err)
@@ -83,9 +83,9 @@ func (c *Cloudflare) UpdateRecord(ip string) error {
 	rc := cloudflare.ZoneIdentifier(zoneID)
 	fqdn := fmt.Sprintf("%s.%s", c.Subdomain, c.Domain)
 
-	logDebug("Cloudflare update: fqdn=%s, ip=%s", fqdn, ip)
+	logDebug("Cloudflare update: fqdn=%s, ip=%s, type=%s", fqdn, ip, recordType)
 	records, _, err := api.ListDNSRecords(ctx, rc, cloudflare.ListDNSRecordsParams{
-		Type: "A",
+		Type: recordType,
 		Name: fqdn,
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (c *Cloudflare) UpdateRecord(ip string) error {
 	var foundSame bool
 	var toUpdate []cloudflare.DNSRecord
 	for _, record := range records {
-		if record.Type == "A" && record.Name == fqdn {
+		if record.Type == recordType && record.Name == fqdn {
 			if record.Content == ip {
 				foundSame = true
 				break // 有完全一致的，直接跳过
@@ -112,7 +112,7 @@ func (c *Cloudflare) UpdateRecord(ip string) error {
 		for _, record := range toUpdate {
 			updateParams := cloudflare.UpdateDNSRecordParams{
 				ID:      record.ID,
-				Type:    "A",
+				Type:    recordType,
 				Name:    fqdn,
 				Content: ip,
 				TTL:     record.TTL,
@@ -130,7 +130,7 @@ func (c *Cloudflare) UpdateRecord(ip string) error {
 	// 没有同名记录，自动添加
 	proxied := false
 	createParams := cloudflare.CreateDNSRecordParams{
-		Type:    "A",
+		Type:    recordType,
 		Name:    fqdn,
 		Content: ip,
 		TTL:     60,

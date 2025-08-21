@@ -1,17 +1,54 @@
 package ip_fetcher
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"OpenDDNS/internal/config"
 )
 
 func FetchIP(src config.IPSrc) (string, error) {
-	resp, err := http.Get(src.URL)
+	return FetchIPWithNetwork(src, "")
+}
+
+// FetchIPWithNetwork 获取IP地址，支持强制指定网络类型
+// networkType: "ipv4", "ipv6" 或 "" (自动)
+func FetchIPWithNetwork(src config.IPSrc, networkType string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// 根据网络类型创建自定义 Transport
+	if networkType != "" {
+		transport := &http.Transport{}
+		dialer := &net.Dialer{
+			Timeout: 5 * time.Second,
+		}
+
+		switch strings.ToLower(networkType) {
+		case "ipv4":
+			// 强制使用 IPv4
+			dialer.FallbackDelay = -1 // 禁用 IPv6 fallback
+			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "tcp4", addr)
+			}
+		case "ipv6":
+			// 强制使用 IPv6
+			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "tcp6", addr)
+			}
+		}
+
+		client.Transport = transport
+	}
+
+	resp, err := client.Get(src.URL)
 	if err != nil {
 		return "", fmt.Errorf("fetch %s failed: %v", src.Name, err)
 	}
@@ -46,6 +83,13 @@ func FetchIP(src config.IPSrc) (string, error) {
 			}
 		}
 		return "", fmt.Errorf("ip not found in trace")
+	case "text":
+		// 直接返回响应体内容（去除前后空白字符）
+		ip := strings.TrimSpace(string(body))
+		if ip == "" {
+			return "", fmt.Errorf("empty response from %s", src.Name)
+		}
+		return ip, nil
 	default:
 		return "", fmt.Errorf("unknown type: %s", src.Type)
 	}
@@ -78,4 +122,30 @@ func SetLogger(debug, warn, err func(string, ...interface{})) {
 	logDebugFunc = debug
 	logWarnFunc = warn
 	logErrorFunc = err
+}
+
+// GetIPType 判断IP地址类型，返回A或AAAA
+func GetIPType(ip string) string {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return ""
+	}
+	if parsedIP.To4() != nil {
+		return "A" // IPv4
+	}
+	return "AAAA" // IPv6
+}
+
+// DetermineRecordType 根据配置和IP地址确定DNS记录类型
+func DetermineRecordType(ip string, configType string) string {
+	switch strings.ToLower(configType) {
+	case "a":
+		return "A"
+	case "aaaa":
+		return "AAAA"
+	case "auto", "":
+		return GetIPType(ip)
+	default:
+		return GetIPType(ip) // 默认自动检测
+	}
 }

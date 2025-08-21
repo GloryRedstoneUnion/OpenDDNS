@@ -16,7 +16,7 @@ type Aliyun struct {
 	Endpoint        string // 可选
 }
 
-func (a *Aliyun) UpdateRecord(ip string) error {
+func (a *Aliyun) UpdateRecord(ip string, recordType string) error {
 	// 构建 OpenAPI Client
 	cfg := &openapi.Config{
 		AccessKeyId:     tea.String(a.AccessKeyID),
@@ -33,7 +33,7 @@ func (a *Aliyun) UpdateRecord(ip string) error {
 	// 查询记录
 	descReq := &alidns.DescribeSubDomainRecordsRequest{
 		SubDomain: tea.String(fqdn),
-		Type:      tea.String("A"),
+		Type:      tea.String(recordType),
 	}
 	descResp, err := client.DescribeSubDomainRecords(descReq)
 	if err != nil {
@@ -57,7 +57,7 @@ func (a *Aliyun) UpdateRecord(ip string) error {
 		updateReq := &alidns.UpdateDomainRecordRequest{
 			RecordId: tea.String(*toUpdate.RecordId),
 			RR:       tea.String(a.Subdomain),
-			Type:     tea.String("A"),
+			Type:     tea.String(recordType),
 			Value:    tea.String(ip),
 		}
 		_, err = client.UpdateDomainRecord(updateReq)
@@ -73,7 +73,7 @@ func (a *Aliyun) UpdateRecord(ip string) error {
 	addReq := &alidns.AddDomainRecordRequest{
 		DomainName: tea.String(a.Domain),
 		RR:         tea.String(a.Subdomain),
-		Type:       tea.String("A"),
+		Type:       tea.String(recordType),
 		Value:      tea.String(ip),
 	}
 	_, err = client.AddDomainRecord(addReq)

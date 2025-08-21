@@ -1,9 +1,12 @@
 # OpenDDNS
 
-现代化多提供商 DDNS 动态域名解析工具，支持 Cloudflare、阿里云，多 IP 提供源，日志等级与文件输出，自动检查更新。
+现代化多提供商 DDNS 动态域名解析工具，支持 Cloudflare、阿里云，多 IP 提供源，IPv4/IPv6 双栈，日志等级与文件输出，自动检查更新。
 
 ## 特性
 - 目前支持 Cloudflare、阿里云（Aliyun），全部采用官方 SDK
+- 支持 IPv4 和 IPv6 双栈 DDNS（A 和 AAAA 记录）
+- 智能记录类型检测，根据获取到的 IP 地址自动选择记录类型
+- **强制网络类型**：指定 A 记录时强制通过 IPv4 访问 API，指定 AAAA 记录时强制通过 IPv6 访问 API
 - 支持多个IP回显源，自动投票决定
 - 日志等级支持 debug/info/warn/error
 - 启动参数支持 `-c/--config` 指定配置文件，`--no-check-update` 跳过更新检查
@@ -53,6 +56,10 @@
 provider: "cloudflare"
 domain: "example.com"
 subdomain: "www"
+
+# DNS记录类型：A (IPv4), AAAA (IPv6), auto (自动检测)
+record_type: "auto"
+
 update_interval_minutes: 5
 log_level: "info"
 log_file: ""
@@ -64,6 +71,13 @@ ip_sources:
   - name: "cf-cdn-tace"
     url: "https://www.cloudflare-cn.com/cdn-cgi/trace"
     type: "trace"
+  # IPv6 IP源示例（如需IPv6 DDNS请取消注释）
+  # - name: "ipify-ipv6"
+  #   url: "https://api64.ipify.org"
+  #   type: "text"
+  # - name: "icanhazip-ipv6" 
+  #   url: "https://ipv6.icanhazip.com"
+  #   type: "text"
 cloudflare:
   api_token: "YOUR_CLOUDFLARE_API_TOKEN"
   zone_id: ""
@@ -80,6 +94,7 @@ aliyun:
 - [provider](#provider)
 - [domain](#domain)
 - [subdomain](#subdomain)
+- [record_type](#record_type)
 - [log_level](#log_level)
 - [log_file](#log_file)
 - [ip_sources](#ip_sources)
@@ -109,6 +124,19 @@ aliyun:
 
 - **示例**：`subdomain: "www"`
 
+### <a id="record_type"></a>record_type
+- **类型**：string
+- **说明**：DNS记录类型。可选值：
+  - `A`：IPv4地址记录（强制IPv4网络访问API）
+  - `AAAA`：IPv6地址记录（强制IPv6网络访问API）
+  - `auto` 或留空：根据获取到的IP地址自动选择记录类型（自动选择网络）
+- **默认值**：`auto`
+- **示例**：`record_type: "auto"`
+
+> [!TIP]
+> - **智能网络选择**：当设置为 `A` 时，程序会强制通过 IPv4 网络访问所有 IP 源 API；设置为 `AAAA` 时强制通过 IPv6 网络访问
+> - **推荐使用 `auto` 模式**：程序会根据实际获取到的IP地址自动选择正确的记录类型和网络
+
 ### <a id="log_level"></a>log_level
 - **类型**：string
 - **说明**：日志等级。可选：`debug`、`info`、`warn`、`error`
@@ -132,17 +160,16 @@ aliyun:
   
 - `url`：GET请求地址
   
-- `type`：`json` 或 `trace`
+- `type`：`json`、`trace` 或 `text`
 
 > [!NOTE]  
 > 目前对trace的兼容性较差，建议使用提供json响应的API，对于trace的兼容性配置将在后续版本更新。
 >
-> **trace模式说明：**
+> **各类型说明：**
 >
-> 1. 先将 HTTP 响应内容按行（\n）分割。
-> 2. 遍历每一行，查找以 `ip=` 开头的行（如 `ip=1.2.3.4`）。
-> 3. 找到后，去掉前缀 `ip=`，直接返回后面的 IP 字符串。
-> 4. 如果遍历完都没找到，则返回错误。
+> - **json模式：** 解析JSON响应，通过json_path提取IP地址
+> - **trace模式：** 查找以`ip=`开头的行（如`ip=1.2.3.4`），提取IP地址
+> - **text模式：** 直接返回响应体内容作为IP地址（适用于直接返回IP的API）
 
   - `json_path`：仅 type 为 json 时必填，指定 IP 字段路径，OpenDDNS将从API响应中提取对应路径的值
 
@@ -157,6 +184,10 @@ ip_sources:
   - name: "cloudflare"
     url: "https://www.cloudflare-cn.com/cdn-cgi/trace"
     type: "trace"
+  # IPv6 示例
+  - name: "ipify-ipv6"
+    url: "https://api64.ipify.org"
+    type: "text"
 ```
 
 ### <a id="update_interval_minutes"></a>update_interval_minutes

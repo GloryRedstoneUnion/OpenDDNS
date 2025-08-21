@@ -79,10 +79,23 @@ func checkUpdate(currentVersion string) {
 }
 
 func getMajorityIP(sources []config.IPSrc) string {
+	return getMajorityIPWithNetwork(sources, "")
+}
+
+// getMajorityIPWithNetwork 获取多数IP，支持强制指定网络类型
+func getMajorityIPWithNetwork(sources []config.IPSrc, networkType string) string {
 	ipResults := make(map[string]string)
 	available := 0
 	for _, src := range sources {
-		ip, err := ipfetcher.FetchIP(src)
+		var ip string
+		var err error
+
+		if networkType != "" {
+			ip, err = ipfetcher.FetchIPWithNetwork(src, networkType)
+		} else {
+			ip, err = ipfetcher.FetchIP(src)
+		}
+
 		if err == nil && ip != "" {
 			logger.Debug("IP source %s returned: %s", src.Name, ip)
 			ipResults[src.Name] = ip
@@ -157,6 +170,12 @@ func main() {
 domain: "example.com"
 subdomain: "www"
 
+# DNS record type: A (IPv4), AAAA (IPv6), or auto (automatic detection)
+# A: Force IPv4 network access to all APIs
+# AAAA: Force IPv6 network access to all APIs  
+# auto: Let system choose the best network path
+record_type: "auto"
+
 log_level: "info"
 log_file: ""
 
@@ -168,6 +187,13 @@ ip_sources:
   - name: "cloudflare"
     url: "https://www.cloudflare-cn.com/cdn-cgi/trace"
     type: "trace"
+  # IPv6 sources (uncomment if you need IPv6 DDNS)
+  # - name: "ipify-ipv6"
+  #   url: "https://api64.ipify.org"
+  #   type: "text"
+  # - name: "icanhazip-ipv6" 
+  #   url: "https://ipv6.icanhazip.com"
+  #   type: "text"
 
 update_interval_minutes: 5
 
@@ -195,6 +221,14 @@ aliyun:
 	}
 	fmt.Printf("%sConfig file:%s %s%s.%s%s\n", green, reset, blue, cfg.Subdomain, cfg.Domain, reset)
 	fmt.Printf("%sDNS Provider:%s %s%s%s\n", green, reset, blue, cfg.Provider, reset)
+
+	// 显示记录类型配置
+	recordTypeDisplay := cfg.RecordType
+	if recordTypeDisplay == "" || strings.ToLower(recordTypeDisplay) == "auto" {
+		recordTypeDisplay = "auto (A/AAAA)"
+	}
+	fmt.Printf("%sRecord Type:%s %s%s%s\n", green, reset, blue, recordTypeDisplay, reset)
+
 	fmt.Printf("%sLog Level:%s %s%s%s\n", green, reset, blue, cfg.LogLevel, reset)
 	if cfg.LogFile != "" {
 		fmt.Printf("%sLog File:%s %s%s%s\n", green, reset, blue, cfg.LogFile, reset)
@@ -255,7 +289,20 @@ aliyun:
 	ticker := time.NewTicker(time.Duration(cfg.UpdateIntervalMinutes) * time.Minute)
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
-		newIP := getMajorityIP(cfg.IPSources)
+		// 根据记录类型配置决定网络类型
+		var networkType string
+		switch strings.ToLower(cfg.RecordType) {
+		case "a":
+			networkType = "ipv4"
+			logger.Debug("Force using IPv4 network for A record")
+		case "aaaa":
+			networkType = "ipv6"
+			logger.Debug("Force using IPv6 network for AAAA record")
+		default:
+			networkType = "" // auto模式，不强制网络类型
+		}
+
+		newIP := getMajorityIPWithNetwork(cfg.IPSources, networkType)
 		if newIP == "" {
 			logger.Warn("Failed to determine public IP.")
 			continue
@@ -265,7 +312,16 @@ aliyun:
 			continue
 		}
 		logger.Info("Detected public IP: %s", newIP)
-		err := dnsProvider.UpdateRecord(newIP)
+
+		// 确定DNS记录类型
+		recordType := ipfetcher.DetermineRecordType(newIP, cfg.RecordType)
+		if recordType == "" {
+			logger.Error("Invalid IP address format: %s", newIP)
+			continue
+		}
+		logger.Debug("Using DNS record type: %s", recordType)
+
+		err := dnsProvider.UpdateRecord(newIP, recordType)
 		if err != nil {
 			logger.Error("Error updating DNS record: %v", err)
 		} else {
