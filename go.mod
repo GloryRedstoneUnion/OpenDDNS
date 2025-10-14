@@ -2,11 +2,12 @@ module OpenDDNS
 
 go 1.24.3
 
-require github.com/alibabacloud-go/tea v1.3.9
+require github.com/alibabacloud-go/tea v1.3.12
 
 require (
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/endpoint-util v1.1.0 // indirect
+	github.com/alibabacloud-go/esa-20240910/v2 v2.39.1 // indirect
 	github.com/alibabacloud-go/openapi-util v0.1.1 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
 	github.com/aliyun/credentials-go v1.4.5 // indirect
@@ -17,7 +18,7 @@ require (
 
 require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.10
-	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.7
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.12
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/cloudflare/cloudflare-go v0.115.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect

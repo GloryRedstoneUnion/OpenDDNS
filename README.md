@@ -1,9 +1,9 @@
 # OpenDDNS
 
-现代化多提供商 DDNS 动态域名解析工具，支持 Cloudflare、阿里云，多 IP 提供源，IPv4/IPv6 双栈，日志等级与文件输出，自动检查更新。
+现代化多提供商 DDNS 动态域名解析工具，支持 Cloudflare、阿里云、阿里云ESA，多 IP 提供源，IPv4/IPv6 双栈，日志等级与文件输出，自动检查更新。
 
 ## 特性
-- 目前支持 Cloudflare、阿里云（Aliyun），全部采用官方 SDK
+- 目前支持 Cloudflare、阿里云（Aliyun）、阿里云ESA（Aliyun ESA），全部采用官方 SDK
 - 支持 IPv4 和 IPv6 双栈 DDNS（A 和 AAAA 记录）
 - 智能记录类型检测，根据获取到的 IP 地址自动选择记录类型
 - **强制网络类型**：指定 A 记录时强制通过 IPv4 访问 API，指定 AAAA 记录时强制通过 IPv6 访问 API
@@ -85,6 +85,10 @@ aliyun:
   access_key_id: "YOUR_ALIYUN_ACCESS_KEY_ID"
   access_key_secret: "YOUR_ALIYUN_ACCESS_KEY_SECRET"
   endpoint: "alidns.aliyuncs.com"
+aliyun_esa:
+  access_key_id: "YOUR_ALIYUN_ESA_ACCESS_KEY_ID"
+  access_key_secret: "YOUR_ALIYUN_ESA_ACCESS_KEY_SECRET"
+  site_id: "YOUR_ESA_SITE_ID"
 ```
 
 ---
@@ -101,12 +105,13 @@ aliyun:
 - [update_interval_minutes](#update_interval_minutes)
 - [cloudflare](#cloudflare)
 - [aliyun](#aliyun)
+- [aliyun_esa](#aliyun_esa)
 
 ---
 
 ### <a id="provider"></a>provider
 - **类型**：string
-- **说明**：选择 DNS 服务商。可选值：`cloudflare`、`aliyun`
+- **说明**：选择 DNS 服务商。可选值：`cloudflare`、`aliyun`、`aliyun_esa`
 - **示例**：`provider: "cloudflare"`
 
 ### <a id="domain"></a>domain
@@ -235,6 +240,30 @@ aliyun:
   > alidns:DescribeSubDomainRecords
   > ```
   >
+
+### <a id="aliyun_esa"></a>aliyun_esa
+
+- **类型**：对象
+- **说明**：阿里云ESA（Edge Security Acceleration）相关配置。
+  - `access_key_id`：用来进行ESA DNS操作的阿里云账户AccessKey ID
+  - `access_key_secret`：用来进行ESA DNS操作的阿里云账户 AccessKey Secret
+  - `site_id`：ESA站点ID，可从ESA控制台获取，**留空时自动根据域名查询**
+- **示例**：
+```yaml
+aliyun_esa:
+  access_key_id: "YOUR_ALIYUN_ESA_ACCESS_KEY_ID"
+  access_key_secret: "YOUR_ALIYUN_ESA_ACCESS_KEY_SECRET"
+  site_id: ""  # 留空自动获取，或填入具体的站点ID如 "123456789012"
+```
+
+> [!IMPORTANT]
+> 使用阿里云ESA需要注意：
+>
+> 1. 所使用的阿里云账户必须具有ESA DNS记录管理权限
+> 2. 域名必须已接入阿里云ESA服务
+> 3. 可以在ESA控制台手动获取站点ID，或留空让程序自动查询
+> 4. 自动查询功能会根据配置的域名精确匹配对应的ESA站点
+> 5. ESA服务目前主要面向企业用户，可能需要开通相应服务
 
 ---
 

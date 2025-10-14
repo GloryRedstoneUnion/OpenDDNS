@@ -1,0 +1,44 @@
+provider: "aliyun_esa"
+
+domain: "example.com"
+subdomain: "www"
+
+# DNS record type: A (IPv4), AAAA (IPv6), or auto (automatic detection)
+# A: Force IPv4 network access to all APIs
+# AAAA: Force IPv6 network access to all APIs  
+# auto: Let system choose the best network path
+record_type: "auto"
+
+log_level: "info"
+log_file: ""
+
+ip_sources:
+  - name: "bilibili"
+    url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getIpInfo"
+    type: "json"
+    json_path: "data.addr"
+  - name: "cloudflare"
+    url: "https://www.cloudflare-cn.com/cdn-cgi/trace"
+    type: "trace"
+  # IPv6 sources (uncomment if you need IPv6 DDNS)
+  # - name: "ipify-ipv6"
+  #   url: "https://api64.ipify.org"
+  #   type: "text"
+  # - name: "icanhazip-ipv6" 
+  #   url: "https://ipv6.icanhazip.com"
+  #   type: "text"
+
+update_interval_minutes: 5
+
+cloudflare:
+  api_token: "YOUR_CLOUDFLARE_API_TOKEN"
+  zone_id: ""
+aliyun:
+  access_key_id: "YOUR_ALIYUN_ACCESS_KEY_ID"
+  access_key_secret: "YOUR_ALIYUN_ACCESS_KEY_SECRET"
+  endpoint: "alidns.aliyuncs.com"
+aliyun_esa:
+  access_key_id: "YOUR_ALIYUN_ESA_ACCESS_KEY_ID"
+  access_key_secret: "YOUR_ALIYUN_ESA_ACCESS_KEY_SECRET"
+  site_id: ""  # ESA站点ID，留空时根据域名自动查询
+  endpoint: "ap-southeast-1"  # ESA服务端点: cn-hangzhou 或 ap-southeast-1，或填入具体ID如 "123456789012"

@@ -204,6 +204,11 @@ aliyun:
   access_key_id: "YOUR_ALIYUN_ACCESS_KEY_ID"
   access_key_secret: "YOUR_ALIYUN_ACCESS_KEY_SECRET"
   endpoint: "alidns.aliyuncs.com"
+aliyun_esa:
+  access_key_id: "YOUR_ALIYUN_ESA_ACCESS_KEY_ID"
+  access_key_secret: "YOUR_ALIYUN_ESA_ACCESS_KEY_SECRET"
+  site_id: ""  # ESA SiteID, leave it empty to auto query.
+  endpoint: "ap-southeast-1"  # ESA API Endpoint: cn-hangzhou / ap-southeast-1
 `
 		err := os.WriteFile(configPath, []byte(defaultConfig), 0644)
 		if err != nil {
@@ -236,7 +241,7 @@ aliyun:
 		fmt.Printf("%sLog File:%s %sConsole only%s\n", green, reset, blue, reset)
 	}
 	fmt.Printf("%sIP Source Count:%s %s%d%s\n", green, reset, blue, len(cfg.IPSources), reset)
-	fmt.Printf("%sSupported DNS Providers:%s %sCloudflare, Alicloud%s\n", green, reset, blue, reset)
+	fmt.Printf("%sSupported DNS Providers:%s %sCloudflare, Aliyun, AliyunESA%s\n", green, reset, blue, reset)
 	fmt.Printf("%s==============================%s\n", blue, reset)
 
 	logger.SetLogLevel(cfg.LogLevel)
@@ -273,6 +278,15 @@ aliyun:
 			Domain:          cfg.Domain,
 			Subdomain:       cfg.Subdomain,
 			Endpoint:        cfg.Aliyun.Endpoint,
+		}
+	case "aliyun_esa":
+		dnsProvider = &provider.AliyunESA{
+			AccessKeyID:     cfg.AliyunESA.AccessKeyID,
+			AccessKeySecret: cfg.AliyunESA.AccessKeySecret,
+			SiteID:          cfg.AliyunESA.SiteID,
+			Endpoint:        cfg.AliyunESA.Endpoint,
+			Domain:          cfg.Domain,
+			Subdomain:       cfg.Subdomain,
 		}
 	// case "tencentcloud":
 	// 	... reserved for tencentcloud ...

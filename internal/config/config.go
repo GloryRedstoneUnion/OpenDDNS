@@ -24,6 +24,13 @@ type AliyunConfig struct {
 	Endpoint        string `yaml:"endpoint"`
 }
 
+type AliyunESAConfig struct {
+	AccessKeyID     string `yaml:"access_key_id"`
+	AccessKeySecret string `yaml:"access_key_secret"`
+	SiteID          string `yaml:"site_id"`  // ESA站点ID
+	Endpoint        string `yaml:"endpoint"` // ESA服务端点区域: cn-hangzhou 或 ap-southeast-1
+}
+
 type TencentCloudConfig struct {
 	SecretID  string `yaml:"secret_id"`
 	SecretKey string `yaml:"secret_key"`
@@ -38,6 +45,7 @@ type Config struct {
 	UpdateIntervalMinutes int                `yaml:"update_interval_minutes"`
 	Cloudflare            CloudflareConfig   `yaml:"cloudflare"`
 	Aliyun                AliyunConfig       `yaml:"aliyun"`
+	AliyunESA             AliyunESAConfig    `yaml:"aliyun_esa"`
 	TencentCloud          TencentCloudConfig `yaml:"tencentcloud"`
 	LogLevel              string             `yaml:"log_level"`
 	LogFile               string             `yaml:"log_file"`
