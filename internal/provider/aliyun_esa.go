@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -87,9 +88,11 @@ func (e *AliyunESA) UpdateRecord(ip string, recordType string) error {
 
 	var toUpdate *esa.ListRecordsResponseBodyRecords
 	var foundSame bool
+	var finalValue string
 
 	// 检查现有记录
 	if listResp.Body != nil && listResp.Body.Records != nil {
+		targetIsIPv4 := e.isIPv4(ip)
 		for _, record := range listResp.Body.Records {
 			if record.RecordName != nil && record.RecordType != nil && record.Data != nil {
 				// 比较记录名和记录类型（考虑ESA的A/AAAA格式）
@@ -99,16 +102,44 @@ func (e *AliyunESA) UpdateRecord(ip string, recordType string) error {
 				}
 
 				if *record.RecordName == fqdn && recordTypeMatch {
-					// 检查是否完全一致
-					if e.compareRecordData(*record.Data, ip) {
-						foundSame = true
-						if logInfo != nil {
-							logInfo("AliyunESA: record already up-to-date: %s => %s", fqdn, ip)
+					// 解析现有值
+					oldValue := ""
+					if record.Data.Value != nil {
+						oldValue = *record.Data.Value
+					}
+
+					// 分割现有IP，保留不同类型的IP
+					existingIPs := strings.Split(oldValue, ",")
+					var newIPs []string
+
+					for _, existingIP := range existingIPs {
+						existingIP = strings.TrimSpace(existingIP)
+						if existingIP == "" {
+							continue
 						}
+						
+						// 检查IP类型
+						isV4 := e.isIPv4(existingIP)
+						
+						// 如果是不同类型的IP，保留
+						if isV4 != targetIsIPv4 {
+							newIPs = append(newIPs, existingIP)
+						}
+					}
+
+					// 添加新的目标IP
+					newIPs = append(newIPs, ip)
+					finalValue = strings.Join(newIPs, ",")
+
+					// 检查是否完全一致
+					if e.compareIPLists(oldValue, finalValue) {
+						foundSame = true
+						logInfo("AliyunESA: record already up-to-date: %s => %s", fqdn, ip)
 						break
 					}
 					// 找到需要更新的记录
 					toUpdate = record
+					break
 				}
 			}
 		}
@@ -123,28 +154,22 @@ func (e *AliyunESA) UpdateRecord(ip string, recordType string) error {
 		updateReq := &esa.UpdateRecordRequest{
 			RecordId: toUpdate.RecordId,
 			Data: &esa.UpdateRecordRequestData{
-				Value: tea.String(ip),
+				Value: tea.String(finalValue),
 			},
 		}
 
 		_, err = client.UpdateRecord(updateReq)
 		if err != nil {
-			if logError != nil {
-				logError("AliyunESA: update record failed for %s: %v", fqdn, err)
-			}
+			logError("AliyunESA: update record failed for %s: %v", fqdn, err)
 			return fmt.Errorf("update record failed: %v", err)
 		}
 
-		if logInfo != nil {
-			logInfo("AliyunESA: record updated: %s => %s", fqdn, ip)
-		}
+		logInfo("AliyunESA: record updated: %s => %s", fqdn, ip)
 		return nil
 	}
 
 	// 创建新记录
-	if logWarn != nil {
-		logWarn("AliyunESA: record not found for %s, will try to create.", fqdn)
-	}
+	logWarn("AliyunESA: record not found for %s, will try to create.", fqdn)
 
 	createReq := &esa.CreateRecordRequest{
 		SiteId:     tea.Int64(siteID),
@@ -158,15 +183,11 @@ func (e *AliyunESA) UpdateRecord(ip string, recordType string) error {
 
 	_, err = client.CreateRecord(createReq)
 	if err != nil {
-		if logError != nil {
-			logError("AliyunESA: create record failed for %s: %v", fqdn, err)
-		}
+		logError("AliyunESA: create record failed for %s: %v", fqdn, err)
 		return fmt.Errorf("create record failed: %v", err)
 	}
 
-	if logInfo != nil {
-		logInfo("AliyunESA: record created: %s => %s", fqdn, ip)
-	}
+	logInfo("AliyunESA: record created: %s => %s", fqdn, ip)
 
 	return nil
 }
@@ -191,9 +212,7 @@ func (e *AliyunESA) getSiteID(client *esa.Client) (int64, error) {
 
 	listResp, err := client.ListSites(listReq)
 	if err != nil {
-		if logError != nil {
-			logError("AliyunESA ListSites error: %v", err)
-		}
+		logError("AliyunESA ListSites error: %v", err)
 		return 0, err
 	}
 
@@ -205,13 +224,53 @@ func (e *AliyunESA) getSiteID(client *esa.Client) (int64, error) {
 	for _, site := range listResp.Body.Sites {
 		if site.SiteName != nil && site.SiteId != nil {
 			if *site.SiteName == e.Domain {
-				if logDebug != nil {
-					logDebug("AliyunESA getSiteID success: %s => %d", e.Domain, *site.SiteId)
-				}
+				logDebug("AliyunESA getSiteID success: %s => %d", e.Domain, *site.SiteId)
 				return *site.SiteId, nil
 			}
 		}
 	}
 
 	return 0, fmt.Errorf("site not found for domain: %s", e.Domain)
+}
+
+func (e *AliyunESA) isIPv4(ip string) bool {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
+		return false
+	}
+	return parsed.To4() != nil
+}
+
+func (e *AliyunESA) compareIPLists(list1, list2 string) bool {
+	s1 := strings.Split(list1, ",")
+	s2 := strings.Split(list2, ",")
+	
+	// Filter empty strings
+	var cleanS1, cleanS2 []string
+	for _, s := range s1 {
+		if trimmed := strings.TrimSpace(s); trimmed != "" {
+			cleanS1 = append(cleanS1, trimmed)
+		}
+	}
+	for _, s := range s2 {
+		if trimmed := strings.TrimSpace(s); trimmed != "" {
+			cleanS2 = append(cleanS2, trimmed)
+		}
+	}
+
+	if len(cleanS1) != len(cleanS2) {
+		return false
+	}
+
+	m1 := make(map[string]bool)
+	for _, ip := range cleanS1 {
+		m1[ip] = true
+	}
+
+	for _, ip := range cleanS2 {
+		if !m1[ip] {
+			return false
+		}
+	}
+	return true
 }
